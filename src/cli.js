@@ -30,7 +30,6 @@ const MarkdownIt = require('markdown-it'),
   }),
   send = require('send');
 
-const mjpage = require('mathjax-node-page').mjpage;
 const taskLists = require('markdown-it-task-lists');
 const frontMatter = require('markdown-it-front-matter');
 
@@ -44,7 +43,6 @@ if (argv.help) {
 Usage: instant-markdown-d [OPTIONS]
 
 Options:
-  --mathjax          Enable MathJax parsing
   --mermaid          Enable Mermaid.js diagrams
   --anchor           Add id attribute to HTML headings
   --browser BROWSER  Use a custom browser
@@ -87,7 +85,6 @@ let md = new MarkdownIt({
   }
 }).use(taskLists, {enabled: true}).use(frontMatter, function(fm){});
 
-if (argv.mathjax) md.use(require('markdown-it-mathjax')());
 if (argv.mermaid)  md.use(require('markdown-it-textual-uml'));
 
 if (argv.anchor) {
@@ -106,10 +103,6 @@ const mjPageConfig = {
   cssInline: false,
 };
 
-if (process.env.INSTANT_MARKDOWN_MATHJAX_FONTS) {
-  mjPageConfig.fontURL = process.env.INSTANT_MARKDOWN_MATHJAX_FONTS;
-}
-
 const mjNodeConfig = {
   html: true,
   // mml: true,
@@ -118,35 +111,9 @@ const mjNodeConfig = {
   speakText: false
 };
 
-function mathJaxRenderEmit(newHtml) {
-  if(argv.mathjax) {
-    mjpage(
-      newHtml,
-      mjPageConfig,
-      mjNodeConfig,
-      function(data) {
-          if (argv.debug) {
-            console.log("Rendered html saved as debug.html")
-            // console.debug(data); // resulting HTML string
-            fs.writeFileSync('debug.html', data, 'utf-8'); // debug
-          }
-          io.emit('newContent', data);
-      }
-    );
-  }
-  else {
-    io.emit('newContent', newHtml)
-  }
-  if (argv.debug) {
-    console.debug('Emitting new data');
-    // console.debug(newHtml); // resulting HTML string
-  }
-}
-
 let lastWrittenMarkdown = '';
 function writeMarkdown(body) {
   lastWrittenMarkdown = md.render(body);
-  mathJaxRenderEmit(lastWrittenMarkdown);
 }
 
 function readAllInput(input, callback) {
@@ -264,7 +231,6 @@ io.on('connection', function(sock){
   process.stdout.write('connection established!');
   if (lastWrittenMarkdown) {
     sock.emit('newContent', lastWrittenMarkdown);  // Quick preview
-    if (argv.mathjax) mathJaxRenderEmit(lastWrittenMarkdown);
   }
 });
 
